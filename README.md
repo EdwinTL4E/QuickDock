@@ -5,3 +5,5 @@ Met QuickDock kun je eenvoudig je favoriete websites opslaan en met één klik o
 De tool is volledig lokaal en vereist geen backend. Alle gegevens worden opgeslagen in je browser via localStorage. Je kunt je data eenvoudig importeren en exporteren via een JSON-bestand, en dankzij de ingebouwde zoekfunctie vind je snel wat je nodig hebt. Daarnaast kun je items aanpassen, ordenen en visueel onderscheiden met kleuren.
 
 QuickDock is ideaal voor iedereen die regelmatig met AI werkt en merkt dat het steeds opnieuw typen van dezelfde prompts of het schakelen tussen verschillende tools tijd kost. Door alles op één plek samen te brengen, helpt QuickDock om sneller en gestructureerder te werken.
+
+Deze HTML-tool is bereikbaar via: https://edwintl4e.github.io/QuickDock/
