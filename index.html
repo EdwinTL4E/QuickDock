@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuickDock</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f13;
+    --surface: #18181f;
+    --surface2: #1f1f29;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.15);
+    --text: #e8e6f0;
+    --text-muted: #6b6880;
+    --text-dim: #9996aa;
+    --accent: #6c5ce7;
+    --accent-soft: rgba(108,92,231,0.15);
+    --accent-glow: rgba(108,92,231,0.3);
+    --green: #00c896;
+    --green-soft: rgba(0,200,150,0.12);
+    --red: #ff5555;
+    --red-soft: rgba(255,85,85,0.1);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+  }
+
+  header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1.25rem;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 8px 14px;
+    min-height: 40px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-header:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .search-bar {
+    max-width: 900px;
+    margin: 0 auto 1.25rem;
+  }
+
+  .search-bar input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-bar input:focus {
+    border-color: var(--accent);
+  }
+
+  .search-bar input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .slot.hidden { display: none; }
+
+  .header-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  footer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 2rem;
+    opacity: 0.5;
+  }
+
+  header h1 {
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #c9a800;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 1.25rem 1rem; }
+    header h1 { font-size: 30px; }
+    .header-sub { font-size: 12px; }
+    .slot-display { gap: 8px; padding: 10px; }
+    .btn-icon { width: 32px; height: 32px; }
+    .slot-actions { gap: 3px; }
+  }
+
+  header span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-glow);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 640px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    min-width: 0;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .count-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .slots { display: flex; flex-direction: column; gap: 8px; }
+
+  .slot {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .slot-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    touch-action: manipulation;
+  }
+
+  .slot-display:hover { background: rgba(255,255,255,0.03); }
+
+  .slot-icon {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-glow);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .slot-icon.green {
+    background: var(--green-soft);
+    border-color: rgba(0,200,150,0.25);
+    color: var(--green);
+  }
+
+  .slot-info { flex: 1; overflow: hidden; }
+
+  .slot-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .slot-name.empty { color: var(--text-muted); font-weight: 400; font-style: italic; }
+
+  /* Prompt namen: binnen de kaart houden zodat actieknoppen niet buiten beeld vallen */
+  #prompts-slots .slot-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #prompts-slots .slot-info {
+    overflow: hidden;
+  }
+
+  .slot-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  .slot-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; position: relative; }
+
+  .slot-display:hover .slot-actions { opacity: 1; }
+
+  @media (hover: none) {
+    .slot-actions { opacity: 1; }
+  }
+
+  .btn-icon {
+    width: 36px; height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s;
+    touch-action: manipulation;
+  }
+
+  .btn-icon:hover { background: var(--surface); color: var(--text); border-color: var(--border-hover); }
+  .btn-icon.danger:hover { background: var(--red-soft); color: var(--red); border-color: rgba(255,85,85,0.25); }
+
+  .slot-editor {
+    display: none;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .slot-editor.open { display: flex; }
+
+  .field-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    resize: none;
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea { min-height: 70px; line-height: 1.5; }
+
+  .editor-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  .btn-save {
+    align-self: flex-end;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-size: 12px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    touch-action: manipulation;
+  }
+
+  .btn-save:hover { opacity: 0.85; }
+
+  .add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 8px;
+    padding: 12px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+    touch-action: manipulation;
+  }
+
+  .add-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .add-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .add-btn:disabled:hover {
+    border-color: var(--border);
+    color: var(--text-muted);
+    background: transparent;
+  }
+
+  .slot-confirm {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255,85,85,0.2);
+    background: var(--red-soft);
+    animation: fadeIn 0.15s ease;
+  }
+
+  .slot-confirm.open { display: flex; }
+
+  .confirm-text {
+    font-size: 12px;
+    color: var(--red);
+    font-weight: 600;
+  }
+
+  .confirm-actions { display: flex; gap: 6px; }
+
+  .btn-cancel {
+    padding: 8px 12px;
+    min-height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-hover);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+  }
+
+  .btn-cancel:hover { background: var(--surface2); color: var(--text); }
+
+  .btn-delete {
+    padding: 8px 12px;
+    min-height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255,85,85,0.4);
+    background: var(--red-soft);
+    color: var(--red);
+    font-size: 11px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+  }
+
+  .btn-delete:hover { background: rgba(255,85,85,0.2); }
+
+  .copy-flash {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    background: var(--green-soft);
+    color: var(--green);
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    position: absolute;
+    right: 132px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .copy-flash.show { opacity: 1; }
+
+  .link-action-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+  }
+
+  /* Quick Actions */
+  .qa-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    max-width: 900px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .qa-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .qa-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 7px;
+    padding: 9px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .qa-btn:hover {
+    border-color: #c9a800;
+    color: #c9a800;
+    background: rgba(201,168,0,0.1);
+  }
+
+  .qa-btn .qa-icon {
+    font-size: 12px;
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+
+  .qa-btn .qa-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .qa-btn .qa-flash {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 1px 6px;
+    background: var(--green-soft);
+    color: var(--green);
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .qa-btn .qa-flash.show { opacity: 1; }
+
+  @media (max-width: 640px) {
+    .qa-buttons {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .qa-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 4px 0;
+  }
+
+  /* QA slot editor */
+  .qa-slot {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    animation: fadeIn 0.2s ease;
+    margin-bottom: 8px;
+  }
+
+  .qa-slot-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 12px;
+    transition: background 0.15s;
+  }
+
+  .qa-slot-display:hover { background: rgba(255,255,255,0.03); }
+
+  .qa-slot-icon {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-sm);
+    background: rgba(201,168,0,0.12);
+    border: 1px solid rgba(201,168,0,0.3);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: #c9a800;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .qa-slot-info { flex: 1; overflow: hidden; }
+
+  .qa-slot-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .qa-slot-name.empty { color: var(--text-muted); font-weight: 400; font-style: italic; }
+
+  .qa-slot-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  .qa-slot-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+  .qa-slot-display:hover .qa-slot-actions { opacity: 1; }
+
+  @media (hover: none) {
+    .qa-slot-actions { opacity: 1; }
+  }
+
+  .qa-editor {
+    display: none;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .qa-editor.open { display: flex; }
+
+  .qa-confirm {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255,85,85,0.2);
+    background: var(--red-soft);
+    animation: fadeIn 0.15s ease;
+  }
+
+  .qa-confirm.open { display: flex; }
+
+  select.qa-select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+
+  select.qa-select:focus { border-color: var(--accent); }
+
+  .qa-mode-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .qa-mode-btn {
+    flex: 1;
+    padding: 7px 10px;
+    font-size: 11px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+  }
+
+  .qa-mode-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .qa-mode-btn:not(.active):hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  /* Kleurcodering */
+  .color-picker {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .color-dot {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.1s;
+    flex-shrink: 0;
+  }
+
+  .color-dot:hover { transform: scale(1.15); }
+  .color-dot.selected { border-color: #fff; transform: scale(1.15); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>QuickDock</h1>
+    <p class="header-sub">Sla je veelgebruikte links en prompts op voor snelle toegang.</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn-header" onclick="importData()">↑ importeren</button>
+    <button class="btn-header" onclick="exportData()">↓ exporteren</button>
+  </div>
+  <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)" />
+</header>
+
+<div class="search-bar">
+  <input type="text" id="search-input" placeholder="🔍  zoeken…" oninput="renderAll()" />
+</div>
+
+<div class="qa-panel" id="qa-panel">
+  <div class="panel-header">
+    <span class="panel-title">Quick Actions</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="count-badge" id="qa-count">0 / 10</span>
+      <button class="btn-header" id="qa-manage-btn" onclick="toggleQAManage()" style="font-size:10px;padding:5px 10px;min-height:28px;border-radius:20px;">beheren</button>
+    </div>
+  </div>
+  <div class="qa-buttons" id="qa-buttons"></div>
+  <p id="qa-hint" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:6px;line-height:1.5;">Klik een knop om de prompt te kopiëren en de website te openen. Plak de prompt daar met <span style="color:var(--text-dim)">Ctrl+V</span> (of lang indrukken op mobiel). Beheer je acties via "beheren".</p>
+  <div id="qa-manage-section" style="display:none;">
+    <p style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px;line-height:1.5;border-top:1px solid var(--border);padding-top:10px;">Elke quick action heeft een naam (de knoptekst), een URL (de website die opent) en een prompt (wordt gekopieerd bij klikken).<br><br>Kies een prompt uit je lijst of typ er zelf een.</p>
+    <div id="qa-slots"></div>
+    <button class="add-btn" id="add-qa-btn" onclick="addQA()">+ quick action toevoegen</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="panel" id="links-panel">
+    <div class="panel-header">
+      <span class="panel-title">Hyperlinks</span>
+      <span class="count-badge" id="links-count">0 / 20</span>
+    </div>
+    <div class="slots" id="links-slots"></div>
+    <button class="add-btn" id="add-link-btn" onclick="addLink()">+ link toevoegen</button>
+  </div>
+
+  <div class="panel" id="prompts-panel">
+    <div class="panel-header">
+      <span class="panel-title">Prompts</span>
+      <span class="count-badge" id="prompts-count">0 / 20</span>
+    </div>
+    <div class="slots" id="prompts-slots"></div>
+    <button class="add-btn" id="add-prompt-btn" onclick="addPrompt()">+ prompt toevoegen</button>
+  </div>
+</div>
+
+<footer>v1.0 · april 2026 · TL4E</footer>
+
+<script>
+const MAX = 20;
+const MAX_QA = 4;
+
+const COLORS = [
+  { id: 'purple', bg: 'rgba(108,92,231,0.15)', border: 'rgba(108,92,231,0.3)', text: '#6c5ce7', dot: '#6c5ce7' },
+  { id: 'green',  bg: 'rgba(0,200,150,0.12)',  border: 'rgba(0,200,150,0.25)',  text: '#00c896', dot: '#00c896' },
+  { id: 'yellow', bg: 'rgba(201,168,0,0.15)',  border: 'rgba(201,168,0,0.3)',   text: '#c9a800', dot: '#c9a800' },
+  { id: 'red',    bg: 'rgba(255,85,85,0.12)',  border: 'rgba(255,85,85,0.25)',  text: '#ff5555', dot: '#ff5555' },
+  { id: 'blue',   bg: 'rgba(0,184,255,0.12)',  border: 'rgba(0,184,255,0.25)', text: '#00b8ff', dot: '#00b8ff' },
+  { id: 'orange', bg: 'rgba(255,165,0,0.12)',  border: 'rgba(255,165,0,0.25)', text: '#ffa500', dot: '#ffa500' },
+];
+
+function getColor(colorId) {
+  return COLORS.find(c => c.id === colorId) || COLORS[0];
+}
+
+function colorPickerHTML(selectedId, type, idx) {
+  return `<div class="color-picker">${COLORS.map(c =>
+    `<div class="color-dot${selectedId === c.id ? ' selected' : ''}" style="background:${c.dot}" title="${c.id}" onclick="set${type}Color_handler(${idx},'${c.id}',this)"></div>`
+  ).join('')}</div>`;
+}
+
+let links = [];
+let prompts = [];
+let quickActions = [];
+
+function save() {
+  localStorage.setItem('qd-links', JSON.stringify(links));
+  localStorage.setItem('qd-prompts', JSON.stringify(prompts));
+  localStorage.setItem('qd-quickactions', JSON.stringify(quickActions));
+}
+
+function load() {
+  try {
+    const l = localStorage.getItem('qd-links');
+    const p = localStorage.getItem('qd-prompts');
+    const qa = localStorage.getItem('qd-quickactions');
+    links = l ? JSON.parse(l) : [
+      {name:'ChatGPT', url:'https://chatgpt.com', color:'green'},
+      {name:'Claude', url:'https://claude.ai', color:'orange'},
+      {name:'Perplexity', url:'https://www.perplexity.ai', color:'blue'},
+      {name:'Gemini', url:'https://gemini.google.com', color:'purple'},
+      {name:'Copilot', url:'https://copilot.microsoft.com', color:'yellow'},
+      {name:'Grok', url:'https://x.com/i/grok', color:'red'}
+    ];
+    prompts = p ? JSON.parse(p) : [
+      {name:'Samenvatten', text:'Vat de volgende tekst beknopt samen in 3–5 kernpunten. Focus op de belangrijkste inzichten en conclusies.'},
+      {name:'Uitleggen', text:'Leg de volgende tekst uit in eenvoudige taal, alsof je het uitlegt aan een beginner. Gebruik voorbeelden indien nuttig.'},
+      {name:'Analyseren', text:'Analyseer de volgende tekst en geef de belangrijkste inzichten, aannames en mogelijke risico’s.'},
+      {name:'Actiepunten', text:'Haal concrete actiepunten uit de volgende tekst en presenteer ze als een duidelijke to-do lijst.'},
+      {name:'Herschrijven', text:'Herschrijf de volgende tekst in duidelijke, professionele taal. Maak het korter en beter leesbaar zonder de betekenis te veranderen.'},
+      {name:'Verbeteren', text:'Geef concrete suggesties om de volgende tekst of het idee te verbeteren. Focus op kwaliteit, effectiviteit en duidelijkheid.'}
+    ];
+    quickActions = qa ? JSON.parse(qa) : [
+      {
+      name:'Wereldnieuws',
+      url:'https://chatgpt.com',
+      promptMode:'custom',
+      customPrompt:'Geef een overzicht van het belangrijkste wereldnieuws van de afgelopen 24–72 uur.\n\nStructureer als volgt:\n- Belangrijkste gebeurtenissen (max 5 bullets)\n- Wat valt op (trends of verbanden)\n- Geopolitieke en economische impact\n- Wat betekent dit voor Europa / Nederland\n\nHoud het kort, concreet en feitelijk.'
+    },
+      {
+        name:'AI nieuws kort',
+        url:'https://chatgpt.com',
+        promptMode:'custom',
+        customPrompt:'Geef een overzicht van het meest recente AI-nieuws (laatste 24-72 uur).\n\nStructureer als volgt:\n- Belangrijkste ontwikkelingen (max 5 bullets)\n- Wat betekent dit (impact/duiding)\n- Relevante spelers (bedrijven/personen)\n- Eventuele risico’s of trends om te volgen\n\nHoud het kort, concreet en actueel.'
+      },
+      ];
+  } catch(e) {
+    links = [
+      {name:'ChatGPT', url:'https://chatgpt.com', color:'green'},
+      {name:'Claude', url:'https://claude.ai', color:'orange'},
+      {name:'Perplexity', url:'https://www.perplexity.ai', color:'blue'},
+      {name:'Gemini', url:'https://gemini.google.com', color:'purple'},
+      {name:'Copilot', url:'https://copilot.microsoft.com', color:'yellow'},
+      {name:'Grok', url:'https://x.com/i/grok', color:'red'}
+    ];
+    prompts = [{name:'',text:''},{name:'',text:''}];
+    quickActions = [];
+  }
+
+  const hasChatGPTLink = links.some(link => {
+    const url = (link.url || '').toLowerCase();
+    return url.includes('chatgpt.com') || url.includes('chat.openai.com');
+  });
+
+  if (!hasChatGPTLink && links.length < MAX) {
+    links.unshift({name:'ChatGPT', url:'https://chatgpt.com', color:'green'});
+    if (links.length > MAX) links = links.slice(0, MAX);
+  }
+
+  const defaultAIQuickActions = [
+    {
+      name:'Wereldnieuws',
+      url:'https://chatgpt.com',
+      promptMode:'custom',
+      customPrompt:'Geef een overzicht van het belangrijkste wereldnieuws van de afgelopen 24–72 uur.\n\nStructureer als volgt:\n- Belangrijkste gebeurtenissen (max 5 bullets)\n- Wat valt op (trends of verbanden)\n- Geopolitieke en economische impact\n- Wat betekent dit voor Europa / Nederland\n\nHoud het kort, concreet en feitelijk.'
+    },
+    
+    {
+      name:'AI nieuws kort',
+      url:'https://chatgpt.com',
+      promptMode:'custom',
+      customPrompt:'Geef een overzicht van het meest recente AI-nieuws (laatste 24-72 uur).\n\nStructureer als volgt:\n- Belangrijkste ontwikkelingen (max 5 bullets)\n- Wat betekent dit (impact/duiding)\n- Relevante spelers (bedrijven/personen)\n- Eventuele risico’s of trends om te volgen\n\nHoud het kort, concreet en actueel.'
+    }];
+
+  defaultAIQuickActions.forEach(def => {
+    const exists = quickActions.some(qa => qa && qa.name === def.name && qa.url === def.url);
+    if (!exists && quickActions.length < MAX_QA) quickActions.push(def);
+  });
+}
+
+function renderQA() {
+  const btnContainer = document.getElementById('qa-buttons');
+  const slotContainer = document.getElementById('qa-slots');
+  const count = document.getElementById('qa-count');
+  const addBtn = document.getElementById('add-qa-btn');
+  btnContainer.innerHTML = '';
+  slotContainer.innerHTML = '';
+  count.textContent = quickActions.length + ' / ' + MAX_QA;
+  addBtn.disabled = quickActions.length >= MAX_QA;
+
+  if (quickActions.length === 0) {
+    btnContainer.innerHTML = '<span class="qa-empty">Nog geen quick actions — voeg er een toe via "beheren".</span>';
+    const hint = document.getElementById('qa-hint');
+    if (hint) hint.style.display = 'none';
+  } else {
+    const hint = document.getElementById('qa-hint');
+    if (hint) hint.style.display = 'block';
+  }
+
+  quickActions.forEach((qa, i) => {
+    // Resolve prompt text for display and button
+    const useCustom = qa.promptMode === 'custom';
+    const resolvedText = useCustom ? (qa.customPrompt || '') : (qa.promptIndex !== '' && qa.promptIndex !== undefined && prompts[qa.promptIndex] ? prompts[qa.promptIndex].text : '');
+    const hasAll = qa.name && qa.url && resolvedText;
+
+    // Render button
+    const btn = document.createElement('button');
+    btn.className = 'qa-btn';
+    btn.id = 'qa-btn-' + i;
+    btn.title = hasAll ? `Kopieer prompt + open ${qa.url}` : 'Niet volledig geconfigureerd';
+    btn.disabled = !hasAll;
+    btn.style.opacity = hasAll ? '1' : '0.4';
+    btn.innerHTML = `<span class="qa-icon">⚡</span><span class="qa-label">${escHtml(qa.name || 'Naamloze actie')}</span><span class="qa-flash" id="qa-flash-${i}">gekopieerd ↗</span>`;
+    btn.onclick = () => triggerQA(i);
+    btnContainer.appendChild(btn);
+
+    // Render config slot
+    const slot = document.createElement('div');
+    slot.className = 'qa-slot';
+    slot.id = 'qa-slot-' + i;
+
+    const promptLabel = useCustom
+      ? (qa.customPrompt ? qa.customPrompt.substring(0, 30) + (qa.customPrompt.length > 30 ? '…' : '') : 'eigen tekst (leeg)')
+      : (qa.promptIndex !== '' && qa.promptIndex !== undefined && prompts[qa.promptIndex]
+          ? prompts[qa.promptIndex].name || 'Naamloze prompt'
+          : 'geen prompt gekoppeld');
+    const urlDomain = qa.url ? qa.url.replace(/^https?:\/\//, '').split('/')[0] : 'geen url';
+
+    const promptOptions = prompts.map((p, pi) =>
+      `<option value="${pi}" ${qa.promptIndex == pi ? 'selected' : ''}>${escHtml(p.name || 'Prompt ' + (pi+1))}</option>`
+    ).join('');
+
+    const modeList = useCustom ? 'custom' : 'list';
+
+    slot.innerHTML = `
+      <div class="qa-slot-display">
+        <div class="qa-slot-icon">⚡</div>
+        <div class="qa-slot-info">
+          <div class="qa-slot-name${!qa.name ? ' empty' : ''}">${escHtml(qa.name) || 'Naamloze actie'}</div>
+          <div class="qa-slot-sub">${escHtml(promptLabel)} → ${escHtml(urlDomain)}</div>
+        </div>
+        <div class="qa-slot-actions" onclick="event.stopPropagation()">
+          <button class="btn-icon" title="Omhoog" onclick="moveQA(${i},-1)" ${i===0?'disabled':''}>↑</button>
+          <button class="btn-icon" title="Omlaag" onclick="moveQA(${i},1)" ${i===quickActions.length-1?'disabled':''}>↓</button>
+          <button class="btn-icon" title="Bewerken" onclick="toggleQAEditor(${i})">&#9998;</button>
+          <button class="btn-icon danger" title="Verwijderen" onclick="confirmRemoveQA(${i})">&#215;</button>
+        </div>
+      </div>
+      <div class="qa-editor" id="qa-editor-${i}">
+        <div>
+          <div class="field-label">Naam knop</div>
+          <input type="text" id="qa-name-${i}" value="${escHtml(qa.name)}" placeholder="bijv. Claude schrijven" />
+        </div>
+        <div>
+          <div class="field-label">URL (website om te openen)</div>
+          <input type="text" id="qa-url-${i}" value="${escHtml(qa.url)}" placeholder="https://claude.ai" />
+        </div>
+        <div>
+          <div class="field-label">Prompt</div>
+          <div class="qa-mode-toggle" style="margin-bottom:6px;">
+            <button type="button" class="qa-mode-btn ${modeList==='list'?'active':''}" onclick="setQAMode(${i},'list')">uit lijst</button>
+            <button type="button" class="qa-mode-btn ${modeList==='custom'?'active':''}" onclick="setQAMode(${i},'custom')">eigen tekst</button>
+          </div>
+          <div id="qa-prompt-list-${i}" style="display:${modeList==='list'?'block':'none'}">
+            <select class="qa-select" id="qa-prompt-${i}">
+              <option value="">— kies een prompt —</option>
+              ${promptOptions}
+            </select>
+          </div>
+          <div id="qa-prompt-custom-${i}" style="display:${modeList==='custom'?'block':'none'}">
+            <textarea id="qa-custom-${i}" placeholder="Typ hier je prompt...">${escHtml(qa.customPrompt || '')}</textarea>
+          </div>
+        </div>
+        <button class="btn-save" onclick="saveQA(${i})">Opslaan</button>
+      </div>
+      <div class="qa-confirm" id="qa-confirm-${i}">
+        <span class="confirm-text">Weet je het zeker?</span>
+        <div class="confirm-actions">
+          <button class="btn-cancel" onclick="cancelRemoveQA(${i})">Annuleren</button>
+          <button class="btn-delete" onclick="removeQA(${i})">Verwijderen</button>
+        </div>
+      </div>
+    `;
+    slotContainer.appendChild(slot);
+  });
+}
+
+function toggleQAManage() {
+  const section = document.getElementById('qa-manage-section');
+  const btn = document.getElementById('qa-manage-btn');
+  const open = section.style.display === 'none';
+  section.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '✕ sluiten' : 'beheren';
+  btn.style.color = open ? 'var(--accent)' : '';
+  btn.style.borderColor = open ? 'var(--accent)' : '';
+  btn.style.background = open ? 'var(--accent-soft)' : '';
+}
+
+function triggerQA(i) {
+  const qa = quickActions[i];
+  if (!qa || !qa.url) return;
+  const text = qa.promptMode === 'custom'
+    ? (qa.customPrompt || '')
+    : (qa.promptIndex !== '' && qa.promptIndex !== undefined && prompts[qa.promptIndex] ? prompts[qa.promptIndex].text : '');
+
+  const doOpen = () => window.open(qa.url, '_blank');
+
+  const showFlash = () => {
+    const flash = document.getElementById('qa-flash-' + i);
+    if (flash) {
+      flash.classList.add('show');
+      setTimeout(() => flash.classList.remove('show'), 1800);
+    }
+  };
+
+  if (text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => { showFlash(); doOpen(); }).catch(() => { fallbackCopy(text, showFlash); doOpen(); });
+    } else {
+      fallbackCopy(text, showFlash);
+      doOpen();
+    }
+  } else {
+    doOpen();
+  }
+}
+
+function addQA() {
+  if (quickActions.length >= MAX_QA) return;
+  // Open manage section if closed
+  const section = document.getElementById('qa-manage-section');
+  const btn = document.getElementById('qa-manage-btn');
+  if (section.style.display === 'none') {
+    section.style.display = 'block';
+    btn.textContent = '✕ sluiten';
+    btn.style.color = 'var(--accent)';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.background = 'var(--accent-soft)';
+  }
+  quickActions.push({name:'', url:'', promptIndex:''});
+  save();
+  renderQA();
+  setTimeout(() => {
+    const ed = document.getElementById('qa-editor-' + (quickActions.length - 1));
+    if (ed) ed.classList.add('open');
+  }, 50);
+}
+
+function toggleQAEditor(i) {
+  document.getElementById('qa-editor-' + i).classList.toggle('open');
+}
+
+function setQAMode(i, mode) {
+  quickActions[i].promptMode = mode;
+  const listEl = document.getElementById('qa-prompt-list-' + i);
+  const customEl = document.getElementById('qa-prompt-custom-' + i);
+  const btns = document.querySelectorAll(`#qa-editor-${i} .qa-mode-btn`);
+  if (listEl) listEl.style.display = mode === 'list' ? 'block' : 'none';
+  if (customEl) customEl.style.display = mode === 'custom' ? 'block' : 'none';
+  btns.forEach(b => b.classList.toggle('active', b.textContent.trim() === (mode === 'list' ? 'uit lijst' : 'eigen tekst')));
+}
+
+function saveQA(i) {
+  quickActions[i].name = document.getElementById('qa-name-' + i).value.trim();
+  quickActions[i].url = document.getElementById('qa-url-' + i).value.trim();
+  const mode = quickActions[i].promptMode || 'list';
+  if (mode === 'custom') {
+    quickActions[i].customPrompt = document.getElementById('qa-custom-' + i).value.trim();
+    quickActions[i].promptIndex = '';
+  } else {
+    const sel = document.getElementById('qa-prompt-' + i);
+    quickActions[i].promptIndex = sel.value !== '' ? parseInt(sel.value) : '';
+    quickActions[i].customPrompt = '';
+  }
+  save();
+  renderQA();
+}
+
+function moveQA(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= quickActions.length) return;
+  [quickActions[i], quickActions[j]] = [quickActions[j], quickActions[i]];
+  save();
+  renderQA();
+}
+
+function confirmRemoveQA(i) {
+  document.getElementById('qa-confirm-' + i).classList.add('open');
+}
+
+function cancelRemoveQA(i) {
+  document.getElementById('qa-confirm-' + i).classList.remove('open');
+}
+
+function removeQA(i) {
+  quickActions.splice(i, 1);
+  save();
+  renderQA();
+}
+
+function renderLinks() {
+  const container = document.getElementById('links-slots');
+  const count = document.getElementById('links-count');
+  const addBtn = document.getElementById('add-link-btn');
+  container.innerHTML = '';
+  count.textContent = links.length + ' / ' + MAX;
+  addBtn.disabled = links.length >= MAX;
+
+  links.forEach((link, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.id = 'link-slot-' + i;
+
+    const isEmpty = !link.name && !link.url;
+    const domain = link.url ? link.url.replace(/^https?:\/\//, '').split('/')[0] : '';
+    const col = getColor(link.color);
+
+    slot.innerHTML = `
+      <div class="slot-display" onclick="openLink(${i})" style="${link.url ? 'cursor:pointer' : 'cursor:default'}">
+        <div class="slot-icon" style="background:${col.bg};border-color:${col.border};color:${col.text}">&rarr;</div>
+        <div class="slot-info">
+          <div class="slot-name${isEmpty ? ' empty' : ''}">${link.name || 'Naamloze link'}</div>
+          <div class="slot-sub">${domain || 'geen url ingesteld'}</div>
+        </div>
+        <div class="slot-actions" onclick="event.stopPropagation()">
+          <button class="btn-icon" title="Omhoog" onclick="moveLink(${i},-1)" ${i===0?'disabled':''}>↑</button>
+          <button class="btn-icon" title="Omlaag" onclick="moveLink(${i},1)" ${i===links.length-1?'disabled':''}>↓</button>
+          <button class="btn-icon" title="Bewerken" onclick="toggleLinkEditor(${i})">&#9998;</button>
+          <button class="btn-icon danger" title="Verwijderen" onclick="confirmRemoveLink(${i})">&#215;</button>
+        </div>
+      </div>
+      <div class="slot-editor" id="link-editor-${i}">
+        <div>
+          <div class="field-label">Naam</div>
+          <input type="text" id="link-name-${i}" value="${escHtml(link.name)}" placeholder="bijv. Mijn Dashboard" />
+        </div>
+        <div>
+          <div class="field-label">URL</div>
+          <input type="text" id="link-url-${i}" value="${escHtml(link.url)}" placeholder="https://..." />
+        </div>
+        <div>
+          <div class="field-label">Kleur</div>
+          ${colorPickerHTML(link.color, 'Link', i)}
+        </div>
+        <button class="btn-save" onclick="saveLink(${i})">Opslaan</button>
+      </div>
+      <div class="slot-confirm" id="link-confirm-${i}">
+        <span class="confirm-text">Weet je het zeker?</span>
+        <div class="confirm-actions">
+          <button class="btn-cancel" onclick="cancelRemoveLink(${i})">Annuleren</button>
+          <button class="btn-delete" onclick="removeLink(${i})">Verwijderen</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(slot);
+  });
+}
+
+function renderPrompts() {
+  const container = document.getElementById('prompts-slots');
+  const count = document.getElementById('prompts-count');
+  const addBtn = document.getElementById('add-prompt-btn');
+  container.innerHTML = '';
+  count.textContent = prompts.length + ' / ' + MAX;
+  addBtn.disabled = prompts.length >= MAX;
+
+  prompts.forEach((prompt, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.id = 'prompt-slot-' + i;
+
+    const isEmpty = !prompt.name && !prompt.text;
+    const preview = prompt.text ? prompt.text.substring(0, 25) + (prompt.text.length > 25 ? '…' : '') : '';
+    const col = getColor(prompt.color || 'green');
+
+    slot.innerHTML = `
+      <div class="slot-display" onclick="copyPrompt(${i})" style="${prompt.text ? 'cursor:pointer' : 'cursor:default'}">
+        <div class="slot-icon" style="background:${col.bg};border-color:${col.border};color:${col.text}">&#9632;</div>
+        <div class="slot-info">
+          <div class="slot-name${isEmpty ? ' empty' : ''}" title="${escHtml(prompt.name || prompt.text || 'Naamloze prompt')}">${prompt.name || 'Naamloze prompt'}</div>
+          <div class="slot-sub" title="${escHtml(prompt.text || '')}">${preview || 'geen tekst ingesteld'}</div>
+        </div>
+        <div class="slot-actions" onclick="event.stopPropagation()">
+          <span class="copy-flash" id="flash-${i}">gekopieerd</span>
+          <button class="btn-icon" title="Omhoog" onclick="movePrompt(${i},-1)" ${i===0?'disabled':''}>↑</button>
+          <button class="btn-icon" title="Omlaag" onclick="movePrompt(${i},1)" ${i===prompts.length-1?'disabled':''}>↓</button>
+          <button class="btn-icon" title="Bewerken" onclick="togglePromptEditor(${i})">&#9998;</button>
+          <button class="btn-icon danger" title="Verwijderen" onclick="confirmRemovePrompt(${i})">&#215;</button>
+        </div>
+      </div>
+      <div class="slot-editor" id="prompt-editor-${i}">
+        <div>
+          <div class="field-label">Naam</div>
+          <input type="text" id="prompt-name-${i}" value="${escHtml(prompt.name)}" placeholder="bijv. Samenvatting maken" />
+        </div>
+        <div>
+          <div class="field-label">Prompttekst</div>
+          <textarea id="prompt-text-${i}" placeholder="Schrijf hier je prompt...">${escHtml(prompt.text)}</textarea>
+        </div>
+        <div>
+          <div class="field-label">Kleur</div>
+          ${colorPickerHTML(prompt.color || 'green', 'Prompt', i)}
+        </div>
+        <button class="btn-save" onclick="savePrompt(${i})">Opslaan</button>
+      </div>
+      <div class="slot-confirm" id="prompt-confirm-${i}">
+        <span class="confirm-text">Weet je het zeker?</span>
+        <div class="confirm-actions">
+          <button class="btn-cancel" onclick="cancelRemovePrompt(${i})">Annuleren</button>
+          <button class="btn-delete" onclick="removePrompt(${i})">Verwijderen</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(slot);
+  });
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggleLinkEditor(i) {
+  const ed = document.getElementById('link-editor-' + i);
+  ed.classList.toggle('open');
+}
+
+function togglePromptEditor(i) {
+  const ed = document.getElementById('prompt-editor-' + i);
+  ed.classList.toggle('open');
+}
+
+// Dynamic color setter functions called from colorPickerHTML
+function applyColorPick(dots, colorId) {
+  dots.forEach(d => d.classList.toggle('selected', d.title === colorId));
+}
+
+// We generate named functions per slot via a proxy approach
+const setLinkColor = {};
+const setPromptColor = {};
+
+function setLinkColor_handler(i, colorId, el) {
+  links[i].color = colorId;
+  applyColorPick(el.parentElement.querySelectorAll('.color-dot'), colorId);
+}
+
+function setPromptColor_handler(i, colorId, el) {
+  prompts[i].color = colorId;
+  applyColorPick(el.parentElement.querySelectorAll('.color-dot'), colorId);
+}
+
+function saveLink(i) {
+  links[i].name = document.getElementById('link-name-' + i).value.trim();
+  links[i].url = document.getElementById('link-url-' + i).value.trim();
+  save();
+  renderLinks();
+}
+
+function savePrompt(i) {
+  prompts[i].name = document.getElementById('prompt-name-' + i).value.trim();
+  prompts[i].text = document.getElementById('prompt-text-' + i).value.trim();
+  save();
+  renderPrompts();
+}
+
+function openLink(i) {
+  const url = links[i].url;
+  if (url) window.open(url, '_blank');
+}
+
+function copyPrompt(i) {
+  const text = prompts[i].text;
+  if (!text) return;
+
+  const showFlash = () => {
+    const flash = document.getElementById('flash-' + i);
+    if (flash) {
+      flash.classList.add('show');
+      setTimeout(() => flash.classList.remove('show'), 1500);
+    }
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(showFlash).catch(() => fallbackCopy(text, showFlash));
+  } else {
+    fallbackCopy(text, showFlash);
+  }
+}
+
+function fallbackCopy(text, callback) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); callback(); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function addLink() {
+  if (links.length >= MAX) return;
+  links.push({name:'', url:''});
+  save();
+  renderLinks();
+  setTimeout(() => {
+    const ed = document.getElementById('link-editor-' + (links.length - 1));
+    if (ed) ed.classList.add('open');
+  }, 50);
+}
+
+function addPrompt() {
+  if (prompts.length >= MAX) return;
+  prompts.push({name:'', text:''});
+  save();
+  renderPrompts();
+  setTimeout(() => {
+    const ed = document.getElementById('prompt-editor-' + (prompts.length - 1));
+    if (ed) ed.classList.add('open');
+  }, 50);
+}
+
+function confirmRemoveLink(i) {
+  const confirm = document.getElementById('link-confirm-' + i);
+  if (confirm) confirm.classList.add('open');
+}
+
+function cancelRemoveLink(i) {
+  const confirm = document.getElementById('link-confirm-' + i);
+  if (confirm) confirm.classList.remove('open');
+}
+
+function removeLink(i) {
+  links.splice(i, 1);
+  save();
+  renderLinks();
+}
+
+function confirmRemovePrompt(i) {
+  const confirm = document.getElementById('prompt-confirm-' + i);
+  if (confirm) confirm.classList.add('open');
+}
+
+function cancelRemovePrompt(i) {
+  const confirm = document.getElementById('prompt-confirm-' + i);
+  if (confirm) confirm.classList.remove('open');
+}
+
+function removePrompt(i) {
+  prompts.splice(i, 1);
+  save();
+  renderPrompts();
+}
+
+function exportData() {
+  const data = { links, prompts, quickActions };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'quickdock-export.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData() {
+  document.getElementById('import-file').click();
+}
+
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data.links) || !Array.isArray(data.prompts)) throw new Error();
+      links = data.links.slice(0, MAX);
+      prompts = data.prompts.slice(0, MAX);
+      quickActions = Array.isArray(data.quickActions) ? data.quickActions.slice(0, MAX_QA) : [];
+      save();
+      renderLinks();
+      renderPrompts();
+      renderQA();
+    } catch {
+      alert('Ongeldig bestand. Gebruik een QuickDock export-bestand.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function moveLink(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= links.length) return;
+  [links[i], links[j]] = [links[j], links[i]];
+  save();
+  renderLinks();
+}
+
+function movePrompt(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= prompts.length) return;
+  [prompts[i], prompts[j]] = [prompts[j], prompts[i]];
+  save();
+  renderPrompts();
+}
+
+function getQuery() {
+  return (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+}
+
+function applySearch() {
+  const q = getQuery();
+  document.querySelectorAll('#links-slots .slot').forEach(slot => {
+    const name = slot.querySelector('.slot-name')?.textContent.toLowerCase() || '';
+    slot.classList.toggle('hidden', q.length > 0 && !name.includes(q));
+  });
+  document.querySelectorAll('#prompts-slots .slot').forEach(slot => {
+    const name = slot.querySelector('.slot-name')?.textContent.toLowerCase() || '';
+    slot.classList.toggle('hidden', q.length > 0 && !name.includes(q));
+  });
+}
+
+function renderAll() {
+  renderLinks();
+  renderPrompts();
+  renderQA();
+  applySearch();
+}
+
+load();
+renderLinks();
+renderPrompts();
+renderQA();
+</script>
+</body>
+</html>
